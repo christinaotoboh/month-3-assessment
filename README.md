@@ -4,41 +4,39 @@ A production-ready full-stack ToDo application with automated CI/CD pipeline dep
 
 ## 🏗️ Architecture
 
-- **Frontend**: React + TypeScript + Vite → S3 + CloudFront
+- **Frontend**: React + TypeScript + Vite → S3 + CloudFront (HTTPS)
 - **Backend**: Golang REST API → EC2 + ALB + Auto Scaling
-- **Database**: MongoDB (self-hosted on EC2)
+- **Proxy**: CloudFront configured as a reverse proxy for `/auth`, `/tasks`, `/users`, `/health` to ALB.
+- **Database**: MongoDB (self-hosted on EC2 with EBS encryption)
 - **Cache**: ElastiCache Redis
 - **Infrastructure**: Terraform (see [starttech-infra](https://github.com/christinaotoboh/starttech-infra))
 
 ## 📁 Repository Structure
 
 ```
-month-3-assessment/
+starttech-application/
 ├── .github/workflows/
-│   ├── frontend-ci-cd.yml          # Frontend deployment pipeline
-│   └── backend-ci-cd.yml           # Backend deployment pipeline
+│   ├── frontend-ci-cd.yml          # Frontend deployment flow
+│   └── backend-ci-cd.yml           # Backend deployment flow
 ├── Client/                         # React frontend application
 ├── Server/MuchToDo/               # Golang backend API
 │   └── Dockerfile                  # Multi-stage Docker build
 ├── scripts/
-│   ├── deploy-frontend.sh          # Frontend deployment script
-│   ├── deploy-backend.sh           # Backend deployment script
-│   ├── health-check.sh             # Health verification script
-│   └── rollback.sh                 # Rollback to previous version
+│   ├── deploy-frontend.sh          # Manual frontend deploy
+│   ├── deploy-backend.sh           # Manual backend deploy
+│   ├── health-check.sh             # Verification script
+│   └── rollback.sh                 # Emergency rollback
 ├── README.md
-├── ARCHITECTURE.md
-└── RUNBOOK.md
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-
 - Node.js 20+
 - Go 1.21+
 - Docker
-- AWS CLI configured with `christi-project` profile
-- Infrastructure deployed (see [starttech-infra](https://github.com/christinaotoboh/starttech-infra))
+- AWS CLI (`christi-project` profile)
+- Infrastructure deployed
 
 ### Local Development
 
@@ -53,184 +51,80 @@ npm run dev
 #### Backend
 ```bash
 cd Server/MuchToDo
-cp .env.example .env
-# Edit .env with your MongoDB and Redis connection details
-docker-compose up -d  # Start MongoDB and Redis
+# Ensure MongoDB/Redis are running
 make run
 # Access at http://localhost:8080
-# Swagger docs at http://localhost:8080/swagger/index.html
 ```
 
 ## 🔄 CI/CD Pipeline
 
-### Automated Deployments
+Both frontend and backend are deployed automatically via GitHub Actions on push to `feature/full-stack`.
 
-Both frontend and backend are automatically deployed when changes are pushed to the `feature/full-stack` branch.
+### GitHub Secrets Required
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `S3_BUCKET_NAME`
+- `CLOUDFRONT_DISTRIBUTION_ID`
+- `CLOUDFRONT_DOMAIN_NAME`
+- `ECR_REGISTRY`
 
-**Frontend Pipeline**:
-1. Install dependencies
-2. Run security audit
-3. Build production bundle
-4. Sync to S3
-5. Invalidate CloudFront cache
+## 🛠️ Operations & Manual Deployment
 
-**Backend Pipeline**:
-1. Run unit tests
-2. Run code quality checks (golangci-lint)
-3. Build Docker image
-4. Scan image for vulnerabilities (Trivy)
-5. Push to Amazon ECR
-6. Deploy to EC2 instances via SSM
-7. Verify health checks
-
-### Required GitHub Secrets
-
-Add these to repository settings (Settings → Secrets and variables → Actions):
-
-```
-AWS_ACCESS_KEY_ID              # AWS access key
-AWS_SECRET_ACCESS_KEY          # AWS secret key
-API_BASE_URL                   # ALB DNS name (e.g., http://starttech-backend-alb-123.us-east-1.elb.amazonaws.com)
-S3_BUCKET_NAME                 # Frontend S3 bucket name
-CLOUDFRONT_DISTRIBUTION_ID     # CloudFront distribution ID
-CLOUDFRONT_DOMAIN_NAME         # CloudFront domain name
-ECR_REGISTRY                   # ECR registry URL (e.g., 123456789.dkr.ecr.us-east-1.amazonaws.com)
-```
-
-### Manual Deployment
-
-#### Deploy Frontend
+### 1. Deploy Frontend
+Updates the React app and invalidates cache.
 ```bash
 cd scripts
 ./deploy-frontend.sh
 ```
 
-#### Deploy Backend
+### 2. Deploy Backend
+Builds new Docker image, pushes to ECR, triggers ASG instance refresh.
 ```bash
 cd scripts
 ./deploy-backend.sh
 ```
 
-#### Health Check
+### 3. Health Checks
+Verifies connectivity to Backend (Direct & Proxied via CloudFront) and Swagger docs.
 ```bash
 cd scripts
 ./health-check.sh
 ```
 
-#### Rollback
+### 4. Emergency Rollback
+Reverts the backend to the previous ECR image on all active instances.
 ```bash
 cd scripts
 ./rollback.sh
 ```
 
-## 📊 Monitoring
+## 🔍 Monitoring & Troubleshooting
 
-### CloudWatch Logs
-```
-AWS Console → CloudWatch → Log groups → /aws/ec2/starttech-backend
-```
+### dashboard
+- **CloudWatch Dashboard**: `starttech-dashboard`
+- **Log Group**: `/aws/ec2/starttech-backend`
 
-### CloudWatch Dashboard
-```
-AWS Console → CloudWatch → Dashboards → starttech-dashboard
-```
+### Common Issues
 
-### Application URLs
+**Frontend 404s or Network Errors:**
+- Verify CloudFront behaviors are routing `/api/*` or specific paths to the ALB origin.
+- Ensure `VITE_API_BASE_URL` is set to `/` (relative) so requests go through the proxy.
 
-After deployment, access the application at:
-- **Frontend**: `https://<cloudfront-domain-name>`
-- **Backend API**: `http://<alb-dns-name>`
-- **Swagger Docs**: `http://<alb-dns-name>/swagger/index.html`
+**Backend Startup Failures:**
+- Check logs: `aws logs tail /aws/ec2/starttech-backend --follow --profile christi-project`
+- Verify `.env` file exists on EC2 at `/home/ec2-user/.env`.
+- Ensure MongoDB is reachable from the backend security group.
 
-Get these URLs from Terraform outputs:
-```bash
-cd ../starttech-infra/terraform
-terraform output
-```
+**Scaling Issues:**
+- Check Alarm `starttech-high-cpu`.
+- Manually scale if needed:
+  ```bash
+  aws autoscaling set-desired-capacity --auto-scaling-group-name starttech-backend-asg --desired-capacity 2 --profile christi-project
+  ```
 
-## 🔒 Security Features
+## 🔒 Security
+- **Strict HTTPS**: Frontend enforces HTTPS via CloudFront.
+- **No Mixed Content**: Backend is proxied via CloudFront to present a unified HTTPS origin.
+- **Vulnerability Scanning**: Trivy scans in CI pipeline.
+- **Private Subnets**: Database and Redis are isolated from public internet.
 
-- ✅ Docker image vulnerability scanning (Trivy)
-- ✅ npm security audit
-- ✅ Code quality checks (golangci-lint)
-- ✅ IAM roles with least-privilege access
-- ✅ Security groups restricting traffic
-- ✅ Secrets managed via GitHub Secrets
-- ✅ HTTPS for frontend (CloudFront)
-- ✅ MongoDB and Redis in private subnets
-
-## 🛠️ Development Workflow
-
-1. **Create feature branch**
-   ```bash
-   git checkout -b feature/your-feature
-   ```
-
-2. **Make changes and test locally**
-
-3. **Commit and push**
-   ```bash
-   git add .
-   git commit -m "feat: your feature description"
-   git push origin feature/your-feature
-   ```
-
-4. **Merge to feature/full-stack** to trigger deployment
-
-## 📚 API Documentation
-
-Interactive API documentation is available at:
-```
-http://<alb-dns-name>/swagger/index.html
-```
-
-### Key Endpoints
-
-- `GET /health` - Health check
-- `POST /api/v1/users/register` - User registration
-- `POST /api/v1/users/login` - User login
-- `GET /api/v1/todos` - List todos
-- `POST /api/v1/todos` - Create todo
-- `PUT /api/v1/todos/:id` - Update todo
-- `DELETE /api/v1/todos/:id` - Delete todo
-
-## 🧪 Testing
-
-### Frontend Tests
-```bash
-cd Client
-npm test
-```
-
-### Backend Tests
-```bash
-cd Server/MuchToDo
-make unit-test
-make integration-test
-```
-
-## 📖 Additional Documentation
-
-- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Detailed system architecture
-- **[RUNBOOK.md](RUNBOOK.md)**: Operations and troubleshooting guide
-- **[Infrastructure Repo](https://github.com/christinaotoboh/starttech-infra)**: Terraform infrastructure code
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test locally
-5. Submit a pull request
-
-## 📝 License
-
-This project is part of the StartTech Month 3 Assessment.
-
-## 📧 Support
-
-For issues or questions, please create an issue in this repository.
-
----
-
-**Built with ❤️ for StartTech DevOps Assessment**

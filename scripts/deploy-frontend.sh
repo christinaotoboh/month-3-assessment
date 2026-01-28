@@ -6,7 +6,8 @@ echo "=== Frontend Deployment Script ==="
 # Configuration
 PROFILE="christi-project"
 REGION="us-east-1"
-CLIENT_DIR="$(dirname "$0")/../frontend"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLIENT_DIR="$SCRIPT_DIR/../frontend"
 
 # Check if AWS CLI is installed
 if ! command -v aws &> /dev/null; then
@@ -22,11 +23,13 @@ fi
 
 # Get S3 bucket name and CloudFront distribution ID from Terraform outputs
 echo "Fetching infrastructure outputs..."
-cd "$(dirname "$0")/../../starttech-infra/terraform"
-S3_BUCKET=$(terraform output -raw s3_bucket_name 2>/dev/null || echo "")
-CLOUDFRONT_ID=$(terraform output -raw cloudfront_distribution_id 2>/dev/null || echo "")
+pushd "$SCRIPT_DIR/../../starttech-infra/terraform" > /dev/null
+S3_BUCKET=$(AWS_PROFILE=$PROFILE terraform output -raw s3_bucket_name 2>/dev/null || echo "")
+CLOUDFRONT_ID=$(AWS_PROFILE=$PROFILE terraform output -raw cloudfront_distribution_id 2>/dev/null || echo "")
+ALB_DNS=$(AWS_PROFILE=$PROFILE terraform output -raw alb_dns_name 2>/dev/null || echo "")
+popd > /dev/null
 
-if [ -z "$S3_BUCKET" ] || [ -z "$CLOUDFRONT_ID" ]; then
+if [ -z "$S3_BUCKET" ] || [ -z "$CLOUDFRONT_ID" ] || [ -z "$ALB_DNS" ]; then
     echo "Error: Could not fetch infrastructure outputs"
     echo "Please ensure infrastructure is deployed first"
     exit 1
@@ -41,11 +44,17 @@ cd "$CLIENT_DIR"
 # Install dependencies
 echo ""
 echo "Installing dependencies..."
-npm ci
+npm ci --fetch-retries 5 --fetch-retry-factor 2 --fetch-retry-mintimeout 20000 --fetch-retry-maxtimeout 120000
 
 # Build the application
+# Since CloudFront proxies /auth, /tasks, /users, /health, /swagger to the backend
+# We can now use a relative path (or the CloudFront domain itself)
+# Ideally relative path "/" works if the app handles it.
+# However, Vite needs VITE_API_BASE_URL. If we set it to "", fetch("/auth/login") works.
 echo ""
 echo "Building application..."
+export VITE_API_BASE_URL="/"
+echo "Using Backend API: Relative Path (Proxied via CloudFront)"
 npm run build
 
 # Sync to S3

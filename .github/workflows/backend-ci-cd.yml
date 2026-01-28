@@ -138,7 +138,7 @@ jobs:
                 "docker stop backend || true",
                 "docker rm backend || true",
                 "echo \"Starting new container...\"",
-                "docker run -d --name backend --restart unless-stopped -p 8080:8080 --env-file /home/ec2-user/.env ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}",
+                "docker run -d --name backend --restart unless-stopped -p 8080:8080 -v /home/ec2-user/.env:/root/.env --env-file /home/ec2-user/.env ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}",
                 "echo \"Waiting for health check...\"",
                 "sleep 10",
                 "curl -f http://localhost:8080/health || exit 1",

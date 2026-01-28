@@ -7,29 +7,42 @@ echo "=== Health Check Script ==="
 PROFILE="christi-project"
 REGION="us-east-1"
 
-# Get ALB DNS name from Terraform outputs
-echo "Fetching ALB DNS name..."
+# Get Infrastructure Outputs
+echo "Fetching infrastructure outputs..."
 cd "$(dirname "$0")/../../starttech-infra/terraform"
-ALB_DNS=$(terraform output -raw alb_dns_name 2>/dev/null || echo "")
+ALB_DNS=$(AWS_PROFILE=$PROFILE terraform output -raw alb_dns_name 2>/dev/null || echo "")
+CLOUDFRONT_DOMAIN=$(AWS_PROFILE=$PROFILE terraform output -raw cloudfront_domain_name 2>/dev/null || echo "")
 
-if [ -z "$ALB_DNS" ]; then
-    echo "Error: Could not fetch ALB DNS name"
+if [ -z "$ALB_DNS" ] || [ -z "$CLOUDFRONT_DOMAIN" ]; then
+    echo "Error: Could not fetch infrastructure outputs"
     echo "Checking local backend..."
     ALB_DNS="localhost:8080"
+    CLOUDFRONT_DOMAIN="localhost:5173"
 fi
 
-echo "Checking backend health at: http://$ALB_DNS"
+echo "Frontend: https://$CLOUDFRONT_DOMAIN"
+echo "Backend (Direct): http://$ALB_DNS"
+echo "Backend (Proxied): https://$CLOUDFRONT_DOMAIN/health"
 
-# Check backend health endpoint
-echo ""
-echo "Checking /health endpoint..."
+echo "Checking backend health (Direct)..."
 HEALTH_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "http://$ALB_DNS/health" || echo "000")
 
 if [ "$HEALTH_RESPONSE" = "200" ]; then
-    echo "✓ Health check passed (HTTP $HEALTH_RESPONSE)"
+    echo "✓ Direct Health check passed"
 else
-    echo "✗ Health check failed (HTTP $HEALTH_RESPONSE)"
+    echo "✗ Direct Health check failed (HTTP $HEALTH_RESPONSE)"
     exit 1
+fi
+
+echo "Checking backend health (Proxied via CloudFront)..."
+PROXY_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://$CLOUDFRONT_DOMAIN/health" || echo "000")
+
+if [ "$PROXY_RESPONSE" = "200" ]; then
+    echo "✓ Proxied Health check passed"
+else
+    echo "✗ Proxied Health check failed (HTTP $PROXY_RESPONSE)"
+    # Don't fail the build yet if proxy takes time to propagate
+    echo "Warning: Proxy might still be deploying."
 fi
 
 # Check Swagger documentation

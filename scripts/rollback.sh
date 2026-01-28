@@ -62,7 +62,7 @@ for INSTANCE_ID in $INSTANCE_IDS; do
             'docker stop backend || true',
             'docker rm backend || true',
             'echo \"Starting previous version...\"',
-            'docker run -d --name backend --restart unless-stopped -p 8080:8080 --env-file /home/ec2-user/.env --log-driver=awslogs --log-opt awslogs-group=/aws/ec2/starttech-backend --log-opt awslogs-stream=\$(ec2-metadata --instance-id | cut -d \" \" -f 2) $ECR_REGISTRY/$ECR_REPOSITORY:$PREVIOUS_TAG',
+            'docker run -d --name backend --restart unless-stopped -p 8080:8080 -v /home/ec2-user/.env:/root/.env --env-file /home/ec2-user/.env --log-driver=awslogs --log-opt awslogs-group=/aws/ec2/starttech-backend --log-opt awslogs-stream=\$(ec2-metadata --instance-id | cut -d \" \" -f 2) $ECR_REGISTRY/$ECR_REPOSITORY:$PREVIOUS_TAG',
             'echo \"Waiting for health check...\"',
             'sleep 10',
             'curl -f http://localhost:8080/health || exit 1',
