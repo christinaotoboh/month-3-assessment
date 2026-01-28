@@ -31,6 +31,10 @@ starttech-application/
 
 ## 🚀 Quick Start
 
+### 🌐 Live Demo
+- **Application URL (Frontend)**: [https://d2uqts95072pp6.cloudfront.net](https://d2uqts95072pp6.cloudfront.net)
+- **API Documentation (Swagger)**: [http://starttech-backend-alb-473005937.us-east-1.elb.amazonaws.com/swagger/index.html](http://starttech-backend-alb-473005937.us-east-1.elb.amazonaws.com/swagger/index.html)
+
 ### Prerequisites
 - Node.js 20+
 - Go 1.21+
