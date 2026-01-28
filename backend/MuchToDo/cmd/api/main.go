@@ -143,8 +143,11 @@ func preloadUsernamesIntoCache(db *mongo.Client, cacheSvc cache.Cache, cfg confi
 			slog.Error("Error preloading usernames to cache", slog.Any("error", err))
 		} else {
 			// Set the sentinel key to prevent re-loading until it expires.
-			cacheSvc.Set(ctx, usernameCacheSentinelKey, "true", usernameCacheTTL)
-			slog.Info("Successfully preloaded usernames into cache", "count", len(usernamesToCache))
+			if err := cacheSvc.Set(ctx, usernameCacheSentinelKey, "true", usernameCacheTTL); err != nil {
+				slog.Warn("Failed to set cache sentinel key", slog.Any("error", err))
+			} else {
+				slog.Info("Successfully preloaded usernames into cache", "count", len(usernamesToCache))
+			}
 		}
 	} else {
 		slog.Info("No usernames found to preload.")
