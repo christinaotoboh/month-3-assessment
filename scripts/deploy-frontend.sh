@@ -6,7 +6,7 @@ echo "=== Frontend Deployment Script ==="
 # Configuration
 PROFILE="christi-project"
 REGION="us-east-1"
-CLIENT_DIR="$(dirname "$0")/../Client"
+CLIENT_DIR="$(dirname "$0")/../frontend"
 
 # Check if AWS CLI is installed
 if ! command -v aws &> /dev/null; then

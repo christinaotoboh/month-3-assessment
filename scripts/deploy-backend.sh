@@ -7,7 +7,7 @@ echo "=== Backend Deployment Script ==="
 PROFILE="christi-project"
 REGION="us-east-1"
 ECR_REPOSITORY="starttech-backend"
-SERVER_DIR="$(dirname "$0")/../Server/MuchToDo"
+SERVER_DIR="$(dirname "$0")/../backend/MuchToDo"
 
 # Check if AWS CLI is installed
 if ! command -v aws &> /dev/null; then
