@@ -60,13 +60,30 @@ make run
 
 Both frontend and backend are deployed automatically via GitHub Actions on push to `feature/full-stack`.
 
-### GitHub Secrets Required
+### 1. Configuration (GitHub Secrets & Variables)
+
+**Secrets** (Sensitive credentials):
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
+
+**Variables** (Infrastructure identifiers - mapped to `env` in workflows):
 - `S3_BUCKET_NAME`
 - `CLOUDFRONT_DISTRIBUTION_ID`
 - `CLOUDFRONT_DOMAIN_NAME`
 - `ECR_REGISTRY`
+- `ECR_REPOSITORY`
+
+## 🧠 Implementation Details
+
+### CloudFront Reverse Proxy Pattern
+To strictly enforce HTTPS and avoid Mixed Content errors/CORS issues, the frontend does **not** call the ALB directly.
+- **Frontend Config**: `VITE_API_BASE_URL` is hardcoded to `/` in the build pipeline.
+- **Routing**: API requests (e.g., `/auth/login`) hit CloudFront, which forwards them to the ALB origin. Static assets hit S3.
+
+### strict Go 1.22 Compatibility
+The backend toolchain is pinned to **Go 1.22**.
+- **Reason**: To solve dependency conflicts (specifically `gin-contrib/sse` and `testcontainers`) that were demanding newer, unstable Go toolchains, we explicitly pinned dependencies in `go.mod` to stable versions compatible with Go 1.22.
+- **Linting**: `golangci-lint` is configured to respect this version constraint.
 
 ## 🛠️ Operations & Manual Deployment
 
