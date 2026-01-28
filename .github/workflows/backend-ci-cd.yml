@@ -13,6 +13,7 @@ env:
   GO_VERSION: '1.21'
   AWS_REGION: us-east-1
   ECR_REPOSITORY: starttech-backend
+  ECR_REGISTRY: 423623832118.dkr.ecr.us-east-1.amazonaws.com
 
 jobs:
   test:
@@ -131,14 +132,14 @@ jobs:
                 "#!/bin/bash",
                 "set -e",
                 "echo \"Logging into ECR...\"",
-                "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}",
+                "aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
                 "echo \"Pulling new image...\"",
-                "docker pull ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}",
+                "docker pull ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}",
                 "echo \"Stopping old container...\"",
                 "docker stop backend || true",
                 "docker rm backend || true",
                 "echo \"Starting new container...\"",
-                "docker run -d --name backend --restart unless-stopped -p 8080:8080 -v /home/ec2-user/.env:/root/.env --env-file /home/ec2-user/.env ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}",
+                "docker run -d --name backend --restart unless-stopped -p 8080:8080 -v /home/ec2-user/.env:/root/.env --env-file /home/ec2-user/.env ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}",
                 "echo \"Waiting for health check...\"",
                 "sleep 10",
                 "curl -f http://localhost:8080/health || exit 1",
@@ -178,7 +179,7 @@ jobs:
         if: success()
         run: |
           echo "✅ Backend deployed successfully!"
-          echo "Image: ${{ secrets.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          echo "Image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
 
       - name: Deployment failed notification
         if: failure()

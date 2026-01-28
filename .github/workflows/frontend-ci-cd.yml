@@ -12,6 +12,9 @@ on:
 env:
   NODE_VERSION: '20'
   AWS_REGION: us-east-1
+  S3_BUCKET_NAME: starttech-frontend-production
+  CLOUDFRONT_DISTRIBUTION_ID: E3SHRGKNQPDEKL
+  CLOUDFRONT_DOMAIN_NAME: d2uqts95072pp6.cloudfront.net
 
 jobs:
   build-and-deploy:
@@ -57,19 +60,19 @@ jobs:
 
       - name: Sync files to S3
         run: |
-          aws s3 sync dist/ s3://${{ secrets.S3_BUCKET_NAME }} --delete --cache-control max-age=31536000,public
+          aws s3 sync dist/ s3://${{ env.S3_BUCKET_NAME }} --delete --cache-control max-age=31536000,public
 
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
 
       - name: Deployment notification
         if: success()
         run: |
           echo "✅ Frontend deployed successfully!"
-          echo "CloudFront URL: https://${{ secrets.CLOUDFRONT_DOMAIN_NAME }}"
+          echo "CloudFront URL: https://${{ env.CLOUDFRONT_DOMAIN_NAME }}"
 
       - name: Deployment failed notification
         if: failure()
