@@ -32,21 +32,32 @@ starttech-application/
 ## 🚀 Quick Start
 
 ### 🌐 Live Demo
-- **Application URL (Frontend)**: [https://d2uqts95072pp6.cloudfront.net](https://d2uqts95072pp6.cloudfront.net)
-- **API Documentation (Swagger)**: [http://starttech-backend-alb-473005937.us-east-1.elb.amazonaws.com/swagger/index.html](http://starttech-backend-alb-473005937.us-east-1.elb.amazonaws.com/swagger/index.html)
+- **Application URL**: [https://d2suwtb3fkg2xw.cloudfront.net](https://d2suwtb3fkg2xw.cloudfront.net)
+- **API Health Check**: [https://d2suwtb3fkg2xw.cloudfront.net/health](https://d2suwtb3fkg2xw.cloudfront.net/health)
+- **API Documentation (Swagger)**: [https://d2suwtb3fkg2xw.cloudfront.net/swagger/index.html](https://d2suwtb3fkg2xw.cloudfront.net/swagger/index.html)
+
+### 📊 Current Infrastructure
+| Resource | Value |
+|----------|-------|
+| **CloudFront Distribution** | `E8ECBBPFRLORX` |
+| **CloudFront Domain** | `d2suwtb3fkg2xw.cloudfront.net` |
+| **S3 Bucket** | `starttech-frontend-production` |
+| **ECR Registry** | `423623832118.dkr.ecr.us-east-1.amazonaws.com` |
+| **ECR Repository** | `starttech-backend` |
+| **Region** | `us-east-1` |
 
 ### Prerequisites
 - Node.js 20+
-- Go 1.21+
+- Go 1.22+
 - Docker
 - AWS CLI (`christi-project` profile)
-- Infrastructure deployed
+- Infrastructure deployed (see [starttech-infra](https://github.com/christinaotoboh/starttech-infra))
 
 ### Local Development
 
 #### Frontend
 ```bash
-cd Client
+cd frontend
 npm install
 npm run dev
 # Access at http://localhost:5173
@@ -54,7 +65,7 @@ npm run dev
 
 #### Backend
 ```bash
-cd Server/MuchToDo
+cd backend/MuchToDo
 # Ensure MongoDB/Redis are running
 make run
 # Access at http://localhost:8080
@@ -64,18 +75,22 @@ make run
 
 Both frontend and backend are deployed automatically via GitHub Actions on push to `feature/full-stack`.
 
-### 1. Configuration (GitHub Secrets & Variables)
+### Deployment Status
+- ✅ **Frontend CI/CD**: Automated deployment to S3 + CloudFront invalidation
+- ✅ **Backend CI/CD**: Automated Docker build → ECR → EC2 deployment via SSM
+
+### Required GitHub Secrets
 
 **Secrets** (Sensitive credentials):
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 
-**Variables** (Infrastructure identifiers - mapped to `env` in workflows):
-- `S3_BUCKET_NAME`
-- `CLOUDFRONT_DISTRIBUTION_ID`
-- `CLOUDFRONT_DOMAIN_NAME`
-- `ECR_REGISTRY`
-- `ECR_REPOSITORY`
+**Environment Variables** (Configured in workflows):
+- `S3_BUCKET_NAME`: `starttech-frontend-production`
+- `CLOUDFRONT_DISTRIBUTION_ID`: `E8ECBBPFRLORX`
+- `CLOUDFRONT_DOMAIN_NAME`: `d2suwtb3fkg2xw.cloudfront.net`
+- `ECR_REGISTRY`: `423623832118.dkr.ecr.us-east-1.amazonaws.com`
+- `ECR_REPOSITORY`: `starttech-backend`
 
 ## 🧠 Implementation Details
 
