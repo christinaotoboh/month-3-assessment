@@ -13,8 +13,8 @@ env:
   NODE_VERSION: '20'
   AWS_REGION: us-east-1
   S3_BUCKET_NAME: starttech-frontend-production
-  CLOUDFRONT_DISTRIBUTION_ID: E3SHRGKNQPDEKL
-  CLOUDFRONT_DOMAIN_NAME: d2uqts95072pp6.cloudfront.net
+  CLOUDFRONT_DISTRIBUTION_ID: E8ECBBPFRLORX
+  CLOUDFRONT_DOMAIN_NAME: d2suwtb3fkg2xw.cloudfront.net
 
 jobs:
   build-and-deploy:
